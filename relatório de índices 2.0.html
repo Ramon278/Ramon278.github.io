@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=0.1000">
+  <title>Relatório de Índices Mensais</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    .tab-trigger {
+      transition: all 0.3s ease;
+    }
+    .tab-trigger:hover {
+      transform: translateY(-2px);
+    }
+    .calc-button {
+      transition: background-color 0.3s ease;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .calc-button:hover {
+      background-color: #2563eb;
+    }
+    .input-container {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .aba-saude-crianca th {
+      font-size: 0.875rem;
+    }
+    .active {
+      background-color: #2563eb !important;
+    }
+    /* Estilo para células com números não somados */
+    .nao-somado {
+      background-color: #ffcccc; /* Vermelho claro */
+    }
+    /* Garantir que o conteúdo das células seja visível */
+    .input-container input {
+      min-width: 120px; /* Largura mínima maior para acomodar expressões longas */
+      text-align: center; /* Centralizar o texto */
+      overflow-x: auto; /* Permitir rolagem horizontal */
+      white-space: nowrap; /* Impedir quebra de linha */
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div class="container mx-auto p-6">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Relatório de Índices Mensais</h1>
+    <div id="tabs">
+      <div class="flex space-x-2 mb-4 overflow-x-auto">
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Cadastro e Acompanhamento">Cadastro e Acompanhamento</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Saúde da Criança">Saúde da Criança</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Saúde do Adulto">Saúde do Adulto</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Saúde da Mulher">Saúde da Mulher</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Saúde Mental">Saúde Mental</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Saúde do Idoso">Saúde do Idoso</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Epidemiologia">Epidemiologia</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Promoção à Saúde">Promoção à Saúde</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Técnico em Enfermagem">Técnico em Enfermagem</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Profissional Médico">Profissional Médico</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Profissional Enfermeiro">Profissional Enfermeiro</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Produção Profissional">Profissional Odontológo</button>
+        <button class="tab-trigger bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600" data-tab="Técnico em Saúde Bucal">Técnico em Saúde Bucal</button>
+      </div>
+      <div id="tabs-content" class="bg-white p-6 rounded-lg shadow-md"></div>
+      <button id="export-pdf" class="mt-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600">
+        Exportar para PDF
+      </button>
+      <button id="salvar-dados" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600">
+        Salvar Dados
+      </button>
+      <button id="resetar-dados" class="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-red-600">
+        Resetar Dados
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const { jsPDF } = window.jspdf;
+
+    const secoes = {
+      "Cadastro e Acompanhamento": [
+        "Pessoas Cadastradas", "Pessoas Acompanhadas", "Pessoas Ausentes", "Famílias Cadastradas", "Famílias Acompanhadas", 
+        "Famílias Ausentes"
+      ],
+      "Saúde da Criança": [
+        "Nascidos Vivos", "Crianças 0 a 6 meses", "Amamentação Exclusiva", "Total de Crianças < 1 ano"," < 1 ano com Vacinas em dia"," < 1 ano com Vitamina A em dia", 
+        "Total de Crianças > 1 ano a < 2 anos"," > 1 ano a < 2 anos com Vacinas em dia"," > 1 ano a < 2 anos com Vitamina A em dia", "Total de Crianças de 0 a 5 anos"," 0 a 5 anos com Vacinas em dia"," 0 a 5 anos com Vitamina A em dia", 
+        "Crianças de 0 a 10 anos", "Crianças que fizeram Puericultura com Enfermeiro ou Médico"
+      ],
+      "Saúde do Adulto": [
+        "Hipertensos Cadastrados", "Hipertensos Acompanhados","Hipertensos Ausentes", "Diabéticos Cadastrados", "Diabéticos Acompanhados", "Diabéticos Ausentes"
+      ],
+      "Saúde da Mulher": [
+        "Gestantes Cadastradas", "Gestantes que Iniciaram o Pré-Natal até a 12ª Semana", "Gestantes que Realizaram Pré-Natal", 
+        "Gestantes Adolescentes", "Mulheres de 50 a 69 Anos", "Mulheres de 50 a 69 Anos que Fizeram Mamografia", 
+        "Mulheres de 25 a 64 Anos", "Mulheres de 25 a 64 Anos que Fizeram PCCU"
+      ],
+      "Saúde Mental": [
+        "Usuários de Saúde Mental Cadastrados", "Acompanhamento Domiciliar", "Usuários no CAPS"
+      ],
+      "Saúde do Idoso": [
+        "Idosos Cadastrados", "Idosos Acamados", "Idosos Domiciliados", "Idosos > 80 Anos"
+      ],
+      "Epidemiologia": [
+        "Usuários com Tuberculose","Usuários com Tuberculose acompanhados no domicílio", "Usuários com Hanseníase","Usuários com Hanseníase acompanhados no domicílio","Notificação de Violência", "Hospitalizações", "Óbitos"
+      ],
+      "Promoção à Saúde": [
+        "Hipertensos em Grupos", "Diabéticos em Grupos", "Crianças em Grupos", "Idosos em Grupos", "Planejamento Familiar"
+      ],
+      "Técnico em Enfermagem": [
+        "Procedimentos na UBS", "Procedimentos no Domicílio", "Grupos de Educação em Saúde"
+      ],
+      "Profissional Médico": [
+        "Consulta Médica na UBS", "Consulta Médica no Domicílio", "Média de Consultas Médicas por Habitante", "Procedimentos Médicos"
+      ],
+      "Profissional Enfermeiro": [
+        "Consulta do Enfermeiro na UBS", "Consulta do Enfermeiro no Domicílio", "Média de Consultas do Enfermeiro por Habitante", 
+        "Procedimentos do Enfermeiro", "Ações de Educação em Saúde"
+      ],
+      "Profissional Odontólogo": [
+        "1ª Consulta", "Consulta no Domicílio", "Média por Habitante", "Procedimentos", "Tratamentos Concluídos", 
+        "Consulta de Gestantes", "Consulta de Puericultura", "Grupos de Educação em Saúde"
+      ],
+      "Técnico em Saúde Bucal": [
+        "Procedimentos na UBS", "Visitas no Domicílio", "Grupos de Educação em Saúde", "Escovação"
+      ]
+    };
+
+    const meses = [
+      "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
+
+    let dados = {};
+    Object.keys(secoes).forEach(secao => {
+      dados[secao] = meses.map(() => secoes[secao].map(() => ""));
+    });
+
+    function handleInputChange(secao, mesIndex, catIndex, value) {
+      if (validarEntrada(value)) {
+        dados[secao][mesIndex][catIndex] = value;
+        atualizarEstiloCelula(secao, mesIndex, catIndex, value);
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Entrada inválida!',
+          text: 'Use apenas números e operadores básicos.',
+        });
+      }
+    }
+
+    function validarEntrada(value) {
+      return /^[0-9+\-*/()\s]*$/.test(value);
+    }
+
+    function atualizarEstiloCelula(secao, mesIndex, catIndex, value) {
+      const inputElement = document.querySelector(
+        `input[data-secao="${secao}"][data-mes="${mesIndex}"][data-cat="${catIndex}"]`
+      );
+      if (value.includes("+") && !/^\d+$/.test(value)) {
+        inputElement.classList.add("nao-somado");
+      } else {
+        inputElement.classList.remove("nao-somado");
+      }
+    }
+
+    function calcularSoma(secao, mesIndex, catIndex) {
+      const inputElement = document.querySelector(
+        `input[data-secao="${secao}"][data-mes="${mesIndex}"][data-cat="${catIndex}"]`
+      );
+      const value = inputElement.value;
+      if (value.includes("+")) {
+        const valores = value.split("+").map(num => parseInt(num.trim()) || 0);
+        const soma = valores.reduce((acc, val) => acc + val, 0).toString();
+        dados[secao][mesIndex][catIndex] = soma;
+        inputElement.value = soma;
+        inputElement.classList.remove("nao-somado");
+      }
+    }
+
+    function renderTabContent(secao) {
+      const content = `
+        <table class="w-full border-collapse ${secao === "Saúde da Criança" ? "aba-saude-crianca" : ""}">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="p-3 text-left text-gray-700">Mês</th>
+              ${secoes[secao].map(cat => `<th class="p-3 text-left text-gray-700">${cat}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${meses.map((mes, mesIndex) => `
+              <tr class="border-b">
+                <td class="p-3 font-semibold text-gray-800">${mes}</td>
+                ${secoes[secao].map((_, catIndex) => `
+                  <td class="p-3">
+                    <div class="input-container">
+                      <input
+                        type="text"
+                        class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${dados[secao][mesIndex][catIndex].includes("+") && !/^\d+$/.test(dados[secao][mesIndex][catIndex]) ? "nao-somado" : ""}"
+                        value="${dados[secao][mesIndex][catIndex]}"
+                        data-secao="${secao}"
+                        data-mes="${mesIndex}"
+                        data-cat="${catIndex}"
+                        onchange="handleInputChange('${secao}', ${mesIndex}, ${catIndex}, this.value)"
+                      />
+                      <button class="calc-button" onclick="calcularSoma('${secao}', ${mesIndex}, ${catIndex})">
+                        <i class="fas fa-calculator"></i>
+                      </button>
+                    </div>
+                  </td>
+                `).join("")}
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+      document.getElementById("tabs-content").innerHTML = content;
+    }
+
+    function exportToPDF() {
+      Swal.fire({
+        title: 'Exportar para PDF',
+        text: 'Deseja exportar o relatório para PDF?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sim',
+        cancelButtonText: 'Não',
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const doc = new jsPDF({
+            orientation: "landscape",
+            unit: "mm",
+            format: "a4"
+          });
+
+          doc.setFontSize(16);
+          doc.text("RELATÓRIO DE ÍNDICE MENSAL", 10, 10);
+          doc.setFontSize(12);
+          doc.text("ESTRATÉGIA DE SAÚDE DA FAMÍLIA SERTÃO SAÚDE", 10, 20);
+          doc.text("ENFERMEIRO(A) RESPONSÁVEL: RAMON REGO", 10, 25);
+
+          Object.keys(secoes).forEach((secao, secaoIndex) => {
+            if (secaoIndex > 0) doc.addPage();
+
+            doc.setFontSize(14);
+            doc.text(secao, 10, 40);
+
+            const columns = secoes[secao].map(cat => cat);
+            const body = meses.map((mes, mesIndex) => {
+              const rowData = [mes];
+              secoes[secao].forEach((_, catIndex) => {
+                rowData.push(dados[secao][mesIndex][catIndex] || "");
+              });
+              return rowData;
+            });
+
+            doc.autoTable({
+              startY: 45,
+              head: [["MÊS", ...columns]],
+              body: body,
+              margin: { top: 50 },
+              theme: 'grid', // Adiciona bordas a todas as células
+              styles: {
+                cellPadding: 2, // Espaçamento interno das células
+                fontSize: 10, // Tamanho da fonte
+                valign: 'middle', // Alinhamento vertical
+                halign: 'center', // Alinhamento horizontal
+              },
+              headStyles: {
+                fillColor: [41, 128, 185], // Cor de fundo do cabeçalho
+                textColor: [255, 255, 255], // Cor do texto do cabeçalho
+                fontStyle: 'bold', // Estilo da fonte do cabeçalho
+              },
+              bodyStyles: {
+                textColor: [0, 0, 0], // Cor do texto do corpo
+              },
+              alternateRowStyles: {
+                fillColor: [245, 245, 245], // Cor de fundo para linhas alternadas
+              },
+            });
+          });
+
+          doc.save("relatorio_mensal.pdf");
+          Swal.fire({
+            icon: 'success',
+            title: 'Sucesso!',
+            text: 'Relatório exportado para PDF com sucesso!',
+          });
+        } else {
+          Swal.fire({
+            icon: 'info',
+            title: 'Cancelado',
+            text: 'Exportação para PDF cancelada.',
+          });
+        }
+      });
+    }
+
+    function salvarDados() {
+      Swal.fire({
+        title: 'Salvar Dados',
+        text: 'Deseja salvar os dados?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sim',
+        cancelButtonText: 'Não',
+      }).then((result) => {
+        if (result.isConfirmed) {
+          localStorage.setItem('dadosRelatorio', JSON.stringify(dados));
+          Swal.fire({
+            icon: 'success',
+            title: 'Sucesso!',
+            text: 'Dados salvos com sucesso!',
+          });
+        } else {
+          Swal.fire({
+            icon: 'info',
+            title: 'Cancelado',
+            text: 'Salvamento de dados cancelado.',
+          });
+        }
+      });
+    }
+
+    function carregarDados() {
+      Swal.fire({
+        title: 'Carregar Dados',
+        text: 'Deseja carregar os dados salvos?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sim',
+        cancelButtonText: 'Não',
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const dadosSalvos = localStorage.getItem('dadosRelatorio');
+          if (dadosSalvos) {
+            dados = JSON.parse(dadosSalvos);
+            Swal.fire({
+              icon: 'success',
+              title: 'Sucesso!',
+              text: 'Dados carregados com sucesso!',
+            });
+            const abaAtual = document.querySelector(".tab-trigger.active")?.getAttribute("data-tab") || "Cadastro e Acompanhamento";
+            renderTabContent(abaAtual);
+          } else {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Aviso',
+              text: 'Nenhum dado salvo encontrado.',
+            });
+          }
+        } else {
+          Swal.fire({
+            icon: 'info',
+            title: 'Cancelado',
+            text: 'Carregamento de dados cancelado.',
+          });
+        }
+      });
+    }
+
+    function resetarDados() {
+      Swal.fire({
+        title: 'Resetar Dados',
+        text: 'Tem certeza que deseja resetar todos os dados? Esta ação não pode ser desfeita.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sim',
+        cancelButtonText: 'Não',
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Object.keys(secoes).forEach(secao => {
+            dados[secao] = meses.map(() => secoes[secao].map(() => ""));
+          });
+          const abaAtual = document.querySelector(".tab-trigger.active")?.getAttribute("data-tab") || "Cadastro e Acompanhamento";
+          renderTabContent(abaAtual);
+          Swal.fire({
+            icon: 'success',
+            title: 'Sucesso!',
+            text: 'Dados resetados com sucesso!',
+          });
+        } else {
+          Swal.fire({
+            icon: 'info',
+            title: 'Cancelado',
+            text: 'Reset de dados cancelado.',
+          });
+        }
+      });
+    }
+
+    document.querySelectorAll(".tab-trigger").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tab-trigger").forEach(btn => btn.classList.remove("active"));
+        button.classList.add("active");
+        const tab = button.getAttribute("data-tab");
+        renderTabContent(tab);
+      });
+    });
+
+    document.getElementById("export-pdf").addEventListener("click", exportToPDF);
+    document.getElementById("salvar-dados").addEventListener("click", salvarDados);
+    document.getElementById("resetar-dados").addEventListener("click", resetarDados);
+
+    document.addEventListener("DOMContentLoaded", () => {
+      carregarDados();
+      renderTabContent("Cadastro e Acompanhamento");
+      document.querySelector(".tab-trigger").classList.add("active");
+    });
+  </script>
+</body>
+</html>
